@@ -1,0 +1,17 @@
+python-dotenv
+
+aiofiles
+
+langgraph
+langchain-core
+langchain-openai
+
+# For Work Tracker MCP Agent
+mcp 
+langchain-mcp-adapters
+
+# For Work Tracker tools
+dateparser
+
+# For Azure AI Foundry
+langchain-azure-ai

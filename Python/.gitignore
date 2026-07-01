@@ -58,3 +58,6 @@ dmypy.json
 # OS
 .DS_Store
 Thumbs.db
+
+# File outputs of the called tools
+outputs/
