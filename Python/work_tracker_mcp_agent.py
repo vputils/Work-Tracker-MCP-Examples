@@ -120,6 +120,9 @@ class WorkTrackerMCPAgent:
         config = {"thread_id": thread_id}
 
         print("--- Session Started ---\n")
+        print("In order to terminate the agent,"
+              "\npress Ctrl+C when the agent is thinking or answering"
+              "\nor Ctrl+D when waiting for the user input.\n")
 
         while not cancellation_callback():
             try:
