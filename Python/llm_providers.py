@@ -38,12 +38,13 @@ def init_model_provider(provider: LLMProvider, model: str, temperature: float) -
         case LLMProvider.VLLM:
             return _init_vllm(model, temperature)
         case _:
-            raise ValueError(f"Invalid or not yet implemented LLM provider!")
+            raise ValueError(f"Invalid or not yet implemented LLM provider '{provider.value}'!")
 
 def _init_openai(model: str, temperature: float) -> BaseChatModel:
     if OPENAI_API_KEY_ENV_KEY not in os.environ:
         raise ValueError(
             f"You must set the '{OPENAI_API_KEY_ENV_KEY}' environment variable (or put it into the `.env` file) when instantiating an OpenAI model!")
+    # The API key is automatically picked up from os.env["OPENAI_API_KEY"] by default
     return ChatOpenAI(
         model=model, 
         temperature=temperature,
