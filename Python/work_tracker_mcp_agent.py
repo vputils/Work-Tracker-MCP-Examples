@@ -36,12 +36,14 @@ class _WorkTrackerMCPAgentState(TypedDict):
 # --- The Agent class ---
 class WorkTrackerMCPAgent:
     llm_provider: LLMProvider
+    mcp_server_url: str
     chat_model: str
     chat_model_temperature: float
 
-    llm: BaseChatModel
-    llm_with_tools: Runnable[LanguageModelInput, AIMessage] | Any
-    graph: CompiledStateGraph[_WorkTrackerMCPAgentState, None, _WorkTrackerMCPAgentState, _WorkTrackerMCPAgentState]
+    _llm: BaseChatModel
+    _llm_with_tools: Runnable[LanguageModelInput, AIMessage] | Any
+    _graph: CompiledStateGraph[_WorkTrackerMCPAgentState, None, _WorkTrackerMCPAgentState, _WorkTrackerMCPAgentState]
+    _memory_checkpointer: InMemorySaver
 
     _discovered_tools: list[BaseTool]
     _local_tools: list[BaseTool]  # The @tool decorator converts Callables into BaseTools
@@ -68,9 +70,9 @@ class WorkTrackerMCPAgent:
         self.llm_provider = llm_provider
         self.mcp_server_url = mcp_server_url
 
-        self.llm = init_model_provider(self.llm_provider, self.chat_model, self.chat_model_temperature)
+        self._llm = init_model_provider(self.llm_provider, self.chat_model, self.chat_model_temperature)
         
-        self.memory_checkpointer = InMemorySaver()
+        self._memory_checkpointer = InMemorySaver()
 
     @classmethod
     async def create(
@@ -101,7 +103,7 @@ class WorkTrackerMCPAgent:
             "loop_count": 0
         }
         
-        result = await self.graph.ainvoke(initial_state, config=RunnableConfig(configurable=config))
+        result = await self._graph.ainvoke(initial_state, config=RunnableConfig(configurable=config))
 
         print("\nAssistant: " + result["messages"][-1].content)
 
@@ -138,7 +140,7 @@ class WorkTrackerMCPAgent:
             print("\nThinking...", end="\r")  # So that it can be rewritten
 
             prefix_printed = False
-            async for part in self.graph.astream(
+            async for part in self._graph.astream(
                     passed_state, config=RunnableConfig(configurable=config), stream_mode="messages", version="v2"):
                 if part["type"] != "messages":
                     if cancellation_callback():
@@ -188,17 +190,17 @@ class WorkTrackerMCPAgent:
         
         # Build the exact same registry pattern you used previously!
         self._tools_registry = {tool.name: tool for tool in self._all_tools}
-        self.llm_with_tools = self.llm.bind_tools(list(self._tools_registry.values()))
+        self._llm_with_tools = self._llm.bind_tools(list(self._tools_registry.values()))
         
         # Now that tools are bound, compile the graph
-        self.graph = self._build_graph()
+        self._graph = self._build_graph()
         
         print(f"Successfully connected! Discovered {len(self._discovered_tools)} MCP tools and adding {len(self._local_tools)} local tools.")
 
 
     # --- The nodes ---
     _AGENT_NODE_NAME = "agent"
-    _TOOLS_NODE_NAME = "tools"  # must always match the LangGraph's internal "tools" literal!
+    _TOOLS_NODE_NAME = "tools"
 
     async def _agent_node(self, state: _WorkTrackerMCPAgentState) -> dict[str, Any]:
         """Invokes the LLM with the current conversation history, prepending the system message."""
@@ -234,7 +236,7 @@ class WorkTrackerMCPAgent:
         all_messages = [SystemMessage(system_message)] + state["messages"]
 
         # The LLM looks at the history and decides to either reply text or output a tool call.
-        response = await self.llm_with_tools.ainvoke(all_messages)
+        response = await self._llm_with_tools.ainvoke(all_messages)
         current_loops = state.get("loop_count", 0)
         return {"messages": [response], "loop_count": current_loops + 1}
         
@@ -318,4 +320,4 @@ class WorkTrackerMCPAgent:
         builder.add_edge(self._TOOLS_NODE_NAME, self._AGENT_NODE_NAME)
 
         # Compile the graph
-        return builder.compile(checkpointer=self.memory_checkpointer)
+        return builder.compile(checkpointer=self._memory_checkpointer)
