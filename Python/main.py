@@ -48,7 +48,7 @@ async def main():
         case LLMProvider.VLLM:
             chat_model = os.getenv(VLLM_MODEL_ENV_KEY, VLLM_MODEL_DEFAULT)
         case _:
-            raise ValueError(f"Invalid or not yet implemented LLM provider {llm_provider_from_env.value}!")
+            raise ValueError(f"Invalid or not yet implemented LLM provider '{llm_provider_from_env.value}'!")
 
     try:
         # Feel free to change the LLM provider to any other.
