@@ -176,22 +176,22 @@ class WorkTrackerMCPAgent:
         """Asynchronously connects to the Work Tracker MCP server, discovers tools, and builds the graph."""
         print("Connecting to Work Tracker MCP server at localhost:8484...")
         
-        # Connect to the Dart StreamableHTTPServerTransport
+        # Connect to the MCP server
         self._mcp_client = MultiServerMCPClient({
             "worktracker": {
-                "transport": "streamable_http", # Note: use "sse" here if streamable_http throws an adapter version error
+                "transport": "streamable_http",
                 "url": self.mcp_server_url
             }
         })
         
-        # Automatically fetch all tools exposed by the Dart server (list_spaces, start_work_day, etc.)
+        # Automatically fetch all tools exposed by the MCP server (list_spaces, start_work_day, etc.)
         self._discovered_tools = await self._mcp_client.get_tools()
 
         # Combine local tools and remote MCP tools
         self._local_tools = get_all_local_agent_tools()
         self._all_tools = self._discovered_tools + self._local_tools
         
-        # Build the exact same registry pattern you used previously!
+        # Build the tools registry and and bind them to the LLM
         self._tools_registry = {tool.name: tool for tool in self._all_tools}
         self._llm_with_tools = self._llm.bind_tools(list(self._tools_registry.values()))
         
