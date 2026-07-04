@@ -249,8 +249,6 @@ class WorkTrackerMCPAgent:
         if not isinstance(last_message, AIMessage):
             return {}
 
-        tool_responses = []
-
         last_tool_calls_count = len(last_message.tool_calls)
         if last_tool_calls_count == 0:
             return {}  # Early exit
