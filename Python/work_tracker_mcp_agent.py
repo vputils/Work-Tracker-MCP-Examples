@@ -236,7 +236,7 @@ class WorkTrackerMCPAgent:
             The current date and time is: {datetime.now().strftime('%c')}.
         """).strip()
 
-        all_messages = [SystemMessage(system_message)] + state["messages"]
+        all_messages = [SystemMessage(system_message), *state["messages"]]
 
         # The LLM looks at the history and decides to either reply text or output a tool call.
         response = await self._llm_with_tools.ainvoke(all_messages)
@@ -246,6 +246,9 @@ class WorkTrackerMCPAgent:
     async def _execute_tools_node(self, state: _WorkTrackerMCPAgentState) -> dict[str, Any]:
         """Node: Manually loops through tool calls requested by the LLM."""
         last_message = state["messages"][-1]
+        if not isinstance(last_message, AIMessage):
+            return {}
+
         tool_responses = []
 
         # Programmatic Guardrail for max. parallelly queried items
@@ -298,7 +301,7 @@ class WorkTrackerMCPAgent:
             return END
             
         # Standard operational routing path
-        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+        if isinstance(last_message, AIMessage) and last_message.tool_calls:
             return self._TOOLS_NODE_NAME
             
         return END
