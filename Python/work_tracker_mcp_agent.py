@@ -206,7 +206,7 @@ class WorkTrackerMCPAgent:
     _TOOLS_NODE_NAME = "tools"
 
     async def _agent_node(self, state: _WorkTrackerMCPAgentState) -> dict[str, Any]:
-        """Invokes the LLM with the current conversation history, prepending the system message."""
+        """Node: Invokes the LLM with the current conversation history, prepending the system message."""
         local_tools_names = [_tool.name for _tool in self._local_tools]
         local_tools_addend = f' along with a set of local tools (`{"`, `".join(local_tools_names)}`)' if len(local_tools_names) > 0 else ''
 
@@ -293,15 +293,14 @@ class WorkTrackerMCPAgent:
         return {"messages": tool_responses}
         
     def _route_or_break(self, state: _WorkTrackerMCPAgentState) -> str:
-        """Custom router acting as a programmatic circuit breaker."""
-        last_message = state["messages"][-1]
-        
+        """Conditional edge router: Custom router acting as a programmatic circuit breaker."""        
         # Circuit Breaker Triggered: Force exit if agent loops too many times
         if state.get("loop_count", 0) > self._MAX_TOOL_CALLS_ROUNDS:
             print(f"⚠️ Circuit breaker triggered! Agent exceeded {self._MAX_TOOL_CALLS_ROUNDS} loops.")
             return END
             
         # Standard operational routing path
+        last_message = state["messages"][-1]
         if isinstance(last_message, AIMessage) and last_message.tool_calls:
             return self._TOOLS_NODE_NAME
             
