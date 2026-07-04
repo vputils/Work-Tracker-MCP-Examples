@@ -259,7 +259,7 @@ class WorkTrackerMCPAgent:
             for tool_call in last_message.tool_calls:
                 error_messages.append(
                     ToolMessage(
-                        content=f"Error: Maximum of {self._MAX_SIMULTANEOUS_TOOL_CALLS} items allowed. You queried {last_tool_calls_count}. Ask the user to clarify.", 
+                        content=f"Error: Maximum of {self._MAX_SIMULTANEOUS_TOOL_CALLS} items allowed. You queried {last_tool_calls_count}. Please self-correct by prioritizing the most important tool calls, combining queries if possible, or executing them in sequential batches instead. Do not ask the user for help.", 
                         tool_call_id=tool_call["id"]
                     )
                 )
