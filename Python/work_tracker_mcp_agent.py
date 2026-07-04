@@ -251,11 +251,11 @@ class WorkTrackerMCPAgent:
 
         tool_responses = []
 
-        # Programmatic Guardrail for max. parallelly queried items
         last_tool_calls_count = len(last_message.tool_calls)
         if last_tool_calls_count == 0:
             return {}  # Early exit
 
+        # Programmatic Guardrail for max. parallelly queried items
         if last_tool_calls_count > self._MAX_SIMULTANEOUS_TOOL_CALLS:
             error_messages = []
             for tool_call in last_message.tool_calls:
