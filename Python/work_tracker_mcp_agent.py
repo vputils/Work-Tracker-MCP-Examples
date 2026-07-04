@@ -45,6 +45,9 @@ class WorkTrackerMCPAgent:
     _graph: CompiledStateGraph[_WorkTrackerMCPAgentState, None, _WorkTrackerMCPAgentState, _WorkTrackerMCPAgentState]
     _memory_checkpointer: InMemorySaver
 
+    # Initialization offloaded from the `__init__()` to `_init_mcp_and_graph()` called by the `create()` factory
+    _mcp_client: MultiServerMCPClient
+
     _discovered_tools: list[BaseTool]
     _local_tools: list[BaseTool]  # The @tool decorator converts Callables into BaseTools
     _all_tools: list[BaseTool]
@@ -174,7 +177,7 @@ class WorkTrackerMCPAgent:
         print("Connecting to Work Tracker MCP server at localhost:8484...")
         
         # Connect to the Dart StreamableHTTPServerTransport
-        self.mcp_client = MultiServerMCPClient({
+        self._mcp_client = MultiServerMCPClient({
             "worktracker": {
                 "transport": "streamable_http", # Note: use "sse" here if streamable_http throws an adapter version error
                 "url": self.mcp_server_url
@@ -182,7 +185,7 @@ class WorkTrackerMCPAgent:
         })
         
         # Automatically fetch all tools exposed by the Dart server (list_spaces, start_work_day, etc.)
-        self._discovered_tools = await self.mcp_client.get_tools()
+        self._discovered_tools = await self._mcp_client.get_tools()
 
         # Combine local tools and remote MCP tools
         self._local_tools = get_all_local_agent_tools()
