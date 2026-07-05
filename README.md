@@ -61,21 +61,42 @@ Work-Tracker-MCP-Examples/
 ├── LICENSE
 ├── README.md
 ├── assets/
-│   └── web-app-badge.svg       # Badge used for the "Launch Web App" button above
-└── Python/                     # Python example (LangGraph + langchain-mcp-adapters)
-    ├── main.py                  # Entry point: loads config, starts the agent's chat loop
-    ├── work_tracker_mcp_agent.py  # The WorkTrackerMCPAgent class and its LangGraph graph
-    ├── agent_tools.py           # Local (non-MCP) tools available to the agent
-    ├── llm_providers.py         # LLM provider abstraction (OpenAI / Azure AI Foundry / vLLM)
-    ├── requirements.txt
+│   └── web-app-badge.svg          # Badge used for the "Launch Web App" button above
+├── Python/                        # Python example (LangGraph + langchain-mcp-adapters)
+│   ├── main.py                     # Entry point: loads config, starts the agent's chat loop
+│   ├── work_tracker_mcp_agent.py   # The WorkTrackerMCPAgent class and its LangGraph graph
+│   ├── agent_tools.py              # Local (non-MCP) tools available to the agent
+│   ├── llm_providers.py            # LLM provider abstraction (OpenAI / Azure AI Foundry / vLLM)
+│   ├── requirements.txt
+│   └── .env.example
+└── TypeScript/                    # TypeScript example (LangGraph.js + the official MCP SDK)
+    ├── src/
+    │   ├── main.ts                  # Entry point: loads config, starts the agent's chat loop
+    │   ├── workTrackerMcpAgent.ts    # The WorkTrackerMCPAgent class and its LangGraph graph
+    │   ├── agentTools.ts            # Local (non-MCP) tools available to the agent
+    │   ├── llmProviders.ts          # LLM provider abstraction (OpenAI / Azure AI Foundry / vLLM)
+    │   └── utils.ts                 # Small helpers (home-directory path expansion)
+    ├── package.json
+    ├── tsconfig.json
     └── .env.example
 ```
 
-A TypeScript counterpart, mirroring this Python example one to one, is planned and will live alongside it in a `TypeScript/` directory once published.
+The Python and TypeScript examples are two independent, functionally equivalent implementations of the same agent: same MCP discovery flow, same local tools, same LangGraph state machine shape, and the same system prompt and guardrails. A few implementation details differ where each ecosystem's idioms differ; those are called out inline below. Pick whichever matches your stack.
 
-## How the Python example works
+## Getting the code
 
-### `llm_providers.py`
+```bash
+git clone https://github.com/vputils/Work-Tracker-MCP-Examples.git
+cd Work-Tracker-MCP-Examples
+```
+
+Then follow the setup for whichever example you want to run: [Python](#python-example) or [TypeScript](#typescript-example).
+
+## Python example
+
+### How it works
+
+#### `llm_providers.py`
 
 Defines the `LLMProvider` enum (`openai`, `ai_foundry`, `vllm`) and `init_model_provider()`, a single factory function that returns a LangChain `BaseChatModel` configured for whichever provider is selected:
 
@@ -83,7 +104,7 @@ Defines the `LLMProvider` enum (`openai`, `ai_foundry`, `vllm`) and `init_model_
 - `ai_foundry` - `AzureAIOpenAIApiChatModel`, authenticated via `DefaultAzureCredential` (Azure CLI login), requires `AZURE_AI_PROJECT_ENDPOINT`.
 - `vllm` - `ChatOpenAI` pointed at a local OpenAI-compatible vLLM server, so no cloud API key is needed by default.
 
-### `agent_tools.py`
+#### `agent_tools.py`
 
 Defines the local tools that run outside the Work Tracker MCP server, exposed via `get_all_local_agent_tools()`:
 
@@ -91,7 +112,7 @@ Defines the local tools that run outside the Work Tracker MCP server, exposed vi
 - `export_markdown_report` - writes a Markdown report to `./outputs/WorkTrackerReports`, with filename sanitization to prevent path traversal.
 - `read_local_notes` - reads a local text or Markdown file (for example meeting notes or a to-do list) so its content can be turned into tasks.
 
-### `work_tracker_mcp_agent.py`
+#### `work_tracker_mcp_agent.py`
 
 The core of the example. `WorkTrackerMCPAgent` is constructed through the async `create()` factory (not the constructor directly), which:
 
@@ -109,11 +130,11 @@ The graph itself is a small loop:
 
 Two entry points are exposed for driving the graph: `run_single_query()` for a single request/response exchange, and `run_streaming_loop()`, which runs an interactive CLI chat loop and streams the assistant's tokens as they are generated.
 
-### `main.py`
+#### `main.py`
 
 Loads environment variables from `.env`, resolves the LLM provider and model name (with sensible defaults for cloud and local models), constructs the `WorkTrackerMCPAgent`, and starts the streaming CLI chat loop. Terminate the loop with Ctrl+C while the agent is thinking or answering, or with Ctrl+D while it is waiting for input.
 
-## Prerequisites
+### Prerequisites
 
 - Python 3.12 or later (the code uses `StrEnum` and other modern typing features).
 - The desktop version of Work Tracker: Hours & ManDays, running locally with its MCP server enabled (default endpoint `http://localhost:8484/mcp`).
@@ -122,13 +143,12 @@ Loads environment variables from `.env`, resolves the LLM provider and model nam
   - An Azure AI Foundry project with the Azure CLI logged in (`az login`), or
   - A local OpenAI-compatible vLLM server (default `http://localhost:8090/v1`).
 
-## Setup
+### Setup
 
-1. Clone the repository and move into the Python example directory:
+1. From the repository root, move into the Python example directory:
 
    ```bash
-   git clone https://github.com/vputils/Work-Tracker-MCP-Examples.git
-   cd Work-Tracker-MCP-Examples/Python
+   cd Python
    ```
 
 2. Create and activate a virtual environment:
@@ -166,7 +186,7 @@ Loads environment variables from `.env`, resolves the LLM provider and model nam
 
 5. Start the desktop Work Tracker app and make sure its MCP server is running and reachable at the URL configured above.
 
-## Usage
+### Usage
 
 Run the agent's interactive chat loop:
 
@@ -184,9 +204,106 @@ User:      Read ~/notes/standup.md and create tasks from anything that looks act
 
 Press Ctrl+C while the agent is thinking or answering, or Ctrl+D while it is waiting for input, to end the session.
 
-## Roadmap
+## TypeScript example
 
-A TypeScript example that mirrors this Python implementation one to one (same agent behavior, same tool set, same MCP server) is in progress and will be added to this repository once ready.
+### How it works
+
+#### `llmProviders.ts`
+
+The TypeScript equivalent of `llm_providers.py`: an `LLMProvider` enum and `initModelProvider()`, returning a LangChain.js `BaseChatModel`:
+
+- `openai` - `ChatOpenAI` from `@langchain/openai`, requires `OPENAI_API_KEY`.
+- `ai_foundry` - `AzureChatOpenAI` from `@langchain/openai`, authenticated with a bearer token provider built from `DefaultAzureCredential` (Azure CLI login). This differs from the Python example, which uses the `langchain-azure-ai` package's `AzureAIOpenAIApiChatModel` configured with a project endpoint; the TypeScript version instead targets a specific Azure OpenAI resource and deployment via `AZURE_AI_RESOURCE_NAME` and `AZURE_AI_CHAT_DEPLOYMENT`.
+- `vllm` - `ChatOpenAI` pointed at a local OpenAI-compatible vLLM server, so no cloud API key is needed by default.
+
+#### `agentTools.ts`
+
+The TypeScript equivalent of `agent_tools.py`, exposed via `getAllLocalAgentTools()`, with each tool's schema defined using `zod` instead of Python type hints:
+
+- `getRelativeTimestampMs` - the same relative-time-to-UTC-millisecond-timestamp tool, using `chrono-node` in place of Python's `dateparser`.
+- `exportMarkdownReport` - writes a Markdown report with the same filename sanitization logic. It defaults to `~/WorkTrackerReports` (the user's home directory) rather than the Python example's `./outputs/WorkTrackerReports` (relative to the working directory); this is an intentional difference between the two examples, not a bug.
+- `readLocalNotes` - reads a local text or Markdown file, with the same error handling for missing or unreadable files.
+
+#### `utils.ts`
+
+A small helper module holding `expandHomeDir()`, which expands a leading `~` to the user's home directory. Node.js has no built-in equivalent of Python's `os.path.expanduser`, so this example provides its own.
+
+#### `workTrackerMcpAgent.ts`
+
+The TypeScript equivalent of `work_tracker_mcp_agent.py`, with the same overall shape but a few ecosystem-specific differences:
+
+- It connects to the MCP server directly with the official `@modelcontextprotocol/sdk`'s `Client` and `StreamableHTTPClientTransport`, since there is no TypeScript equivalent of `langchain-mcp-adapters` used here. Each tool returned by `listTools()` is manually wrapped into a LangChain.js `StructuredTool` via `tool()`, forwarding calls to `mcpClient.callTool()` and passing the tool's raw JSON Schema straight through as its `schema` (LangChain.js accepts a raw JSON Schema directly, with no need to hand-translate it into `zod`).
+- Graph state is defined with LangGraph.js's `Annotation.Root`, using `messagesStateReducer` as the equivalent of Python's `add_messages`, and `MemorySaver` as the equivalent of `InMemorySaver`.
+- The `tools` node executes tool calls concurrently with `Promise.allSettled` instead of `asyncio.gather(..., return_exceptions=True)`.
+- The `agent` and `tools` nodes, the conditional routing, the circuit breaker (10 rounds), the simultaneous tool call cap (5), and the system prompt text are all the same as in the Python example.
+
+#### `main.ts`
+
+Loads `.env`, resolves the LLM provider and model name, constructs the `WorkTrackerMCPAgent`, and starts the streaming CLI chat loop. Termination works slightly differently than in the Python CLI: press Ctrl+C at any time (caught via a `SIGINT` handler, the Node.js equivalent of catching `KeyboardInterrupt`), or type `exit` at the `User:` prompt, since Node's `readline` does not surface Ctrl+D as cleanly as Python's `input()` does.
+
+### Prerequisites
+
+- Node.js 20.6 or later (a current LTS release is recommended); the `--import` flag used to run the example requires at least this version.
+- The desktop version of Work Tracker: Hours & ManDays, running locally with its MCP server enabled (default endpoint `http://localhost:8484/mcp`).
+- One of the following, depending on the LLM provider you choose:
+  - An OpenAI API key, or
+  - An Azure AI Foundry (Azure OpenAI) resource with the Azure CLI logged in (`az login`), or
+  - A local OpenAI-compatible vLLM server (default `http://localhost:8090/v1`).
+
+### Setup
+
+1. From the repository root, move into the TypeScript example directory:
+
+   ```bash
+   cd TypeScript
+   ```
+
+2. Install the dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Copy the example environment file and fill in the values for your chosen LLM provider:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Relevant variables in `.env`:
+
+   | Variable | Purpose | Default |
+   |---|---|---|
+   | `LLM_PROVIDER` | Which provider to use: `openai`, `ai_foundry`, or `vllm` | `vllm` |
+   | `OPENAI_API_KEY` | Required if `LLM_PROVIDER=openai` | - |
+   | `OPEN_AI_MODEL` | Model name for OpenAI | `gpt-4.1-mini` |
+   | `AZURE_AI_RESOURCE_NAME` | Required if `LLM_PROVIDER=ai_foundry`; your Azure OpenAI resource name | - |
+   | `AZURE_AI_CHAT_DEPLOYMENT` | Deployment name for Azure AI Foundry | `gpt-4.1-mini` |
+   | `AZURE_AI_API_VERSION` | Azure OpenAI API version | `2024-04-01-preview` |
+   | `VLLM_API_BASE` | Base URL of a local OpenAI-compatible vLLM server | `http://localhost:8090/v1` |
+   | `VLLM_API_KEY` | API key for the vLLM server, if any | `EMPTY` |
+   | `VLLM_MODEL` | Model name served by vLLM | `qwen3-coder-next` |
+   | `MCP_SERVER_URL` | URL of the Work Tracker desktop app's MCP server | `http://localhost:8484/mcp` |
+
+4. Start the desktop Work Tracker app and make sure its MCP server is running and reachable at the URL configured above.
+
+### Usage
+
+Run the agent's interactive chat loop from inside the `TypeScript` directory:
+
+```bash
+node --import tsx src/main.ts
+```
+
+This uses `tsx` as an ESM loader so the TypeScript source runs directly, with no separate compile step. On startup, the agent connects to the Work Tracker MCP server, discovers its tools, and reports how many remote and local tools it found. You can then type the same kind of natural-language requests as in the Python example:
+
+```
+User:      Start my work day and begin working on the "Client onboarding" task.
+User:      How many hours have I logged this week? Export a summary as a markdown report.
+User:      Read ~/notes/standup.md and create tasks from anything that looks actionable.
+```
+
+Press Ctrl+C at any time, or type `exit` at the `User:` prompt, to end the session.
 
 ## License
 
