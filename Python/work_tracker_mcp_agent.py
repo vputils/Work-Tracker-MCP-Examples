@@ -174,7 +174,7 @@ class WorkTrackerMCPAgent:
     # --- MCP Discovery and Graph initialization ---
     async def _init_mcp_and_graph(self):
         """Asynchronously connects to the Work Tracker MCP server, discovers tools, and builds the graph."""
-        print("Connecting to Work Tracker MCP server at localhost:8484...")
+        print(f"Connecting to Work Tracker MCP server at '{self.mcp_server_url}'...")
         
         # Connect to the MCP server
         self._mcp_client = MultiServerMCPClient({
