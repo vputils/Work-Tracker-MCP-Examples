@@ -233,7 +233,7 @@ class WorkTrackerMCPAgent:
 
             Communicate concisely and professionally. You are assisting a power user who values speed and exactness.
 
-            The current date and time is: {datetime.now().strftime('%c')}.
+            The current date and time is: {datetime.now().strftime('%A, %Y-%m-%d %H:%M:%S')}.
         """).strip()
 
         all_messages = [SystemMessage(system_message), *state["messages"]]
